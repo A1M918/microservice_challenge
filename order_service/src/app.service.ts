@@ -3,13 +3,28 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Order, OrderDocument } from './schemas/order.schema';
 import { CreateOrderDto } from './dto/CreateOrder.dto';
+import {
+  ClientProxy,
+  ClientProxyFactory,
+  Transport,
+} from '@nestjs/microservices';
+import { CreateInvoiceDto } from './dto/CreateInvoice.dto';
 // import { UpdateOrderDto } from './dto/update-order.dto';
 
 @Injectable()
 export class OrdersService {
+  client: ClientProxy;
   constructor(
     @InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>,
-  ) {}
+  ) {
+    this.client = ClientProxyFactory.create({
+      transport: Transport.REDIS,
+      options: {
+        host: 'localhost',
+        port: 6379,
+      },
+    });
+  }
 
   async findAll(): Promise<Order[]> {
     return this.orderModel.find();
@@ -18,7 +33,7 @@ export class OrdersService {
   async findOne(id: string): Promise<Order> {
     const order = await this.orderModel.findById(id).exec();
     if (!order) {
-      throw new NotFoundException('Order not found');
+      return null;
     }
     return order;
   }
@@ -35,28 +50,34 @@ export class OrdersService {
     if (!order) {
       return null;
     }
+
     order.status = status;
     await order.save();
+
+    if (status === 'Shipped') {
+      const relatedInvoice: CreateInvoiceDto | any = await this.client
+        .send<string, string>('getInvoiceByOrderId', order._id.toString())
+        .toPromise();
+
+      if (relatedInvoice) {
+        await this.client
+          .send<string, string>('sendInvoice', relatedInvoice._id)
+          .toPromise();
+      }
+    }
+
     return order;
   }
 
   async remove(id: string): Promise<Order> {
     const order = await this.orderModel.findById(id).exec();
     if (!order) {
-      throw new NotFoundException('Order not found');
+      return null;
     }
     return this.orderModel.findByIdAndUpdate(
       order._id,
       { deleted: true },
       { new: true },
     );
-  }
-
-  async processOrder(orderId: string): Promise<void> {
-    const order = await this.orderModel.findById(orderId).exec();
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
-    // Process the order asynchronously using Redis or any
   }
 }
