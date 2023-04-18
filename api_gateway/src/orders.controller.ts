@@ -9,7 +9,7 @@ import {
   Put,
 } from '@nestjs/common';
 import { CreateOrderDto } from './dto/CreateOrder.dto';
-import { OrdersService } from './app.service';
+import { OrdersService } from './orders.service';
 
 @Controller('orders')
 export class OrdersController {

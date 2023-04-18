@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { OrdersController } from './app.controller';
-import { OrdersService } from './app.service';
+import { OrdersController } from './orders.controller';
+import { OrdersService } from './orders.service';
 
 describe('OrdersController', () => {
-  let ordersController: OrdersController;
+  let appController: OrdersController;
 
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
@@ -11,12 +11,12 @@ describe('OrdersController', () => {
       providers: [OrdersService],
     }).compile();
 
-    ordersController = app.get<OrdersController>(OrdersController);
+    appController = app.get<OrdersController>(OrdersController);
   });
 
   describe('root', () => {
     it('should return "Hello World!"', () => {
-      expect(ordersController.findAll()).toBe('Hello World!');
+      expect(appController.getAllOrders).toBe('Hello World!');
     });
   });
 });
